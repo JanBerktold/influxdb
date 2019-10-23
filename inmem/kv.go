@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/google/btree"
@@ -51,6 +52,10 @@ func (s *KVStore) Update(ctx context.Context, fn func(kv.Tx) error) error {
 		writable: true,
 		ctx:      ctx,
 	})
+}
+
+func (s *KVStore) Backup(ctx context.Context, w io.Writer) error {
+	panic("not implemented")
 }
 
 // Flush removes all data from the buckets.  Used for testing.

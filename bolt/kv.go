@@ -3,14 +3,16 @@ package bolt
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
 
 	bolt "github.com/coreos/bbolt"
+	"go.uber.org/zap"
+
 	"github.com/influxdata/influxdb/kit/tracing"
 	"github.com/influxdata/influxdb/kv"
-	"go.uber.org/zap"
 )
 
 // KVStore is a kv.Store backed by boltdb.
@@ -122,6 +124,17 @@ func (s *KVStore) Update(ctx context.Context, fn func(tx kv.Tx) error) error {
 			tx:  tx,
 			ctx: ctx,
 		})
+	})
+}
+
+// Backup copies all K:Vs to a writer, in BoltDB format.
+func (s *KVStore) Backup(ctx context.Context, w io.Writer) error {
+	span, ctx := tracing.StartSpanFromContext(ctx)
+	defer span.Finish()
+
+	return s.db.View(func(tx *bolt.Tx) error {
+		_, err := tx.WriteTo(w)
+		return err
 	})
 }
 

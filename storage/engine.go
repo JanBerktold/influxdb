@@ -3,10 +3,14 @@ package storage
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"math"
+	"os"
+	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/influxdata/influxdb"
@@ -21,6 +25,7 @@ import (
 	"github.com/influxdata/influxdb/tsdb/tsm1"
 	"github.com/influxdata/influxdb/tsdb/value"
 	"github.com/influxdata/influxql"
+	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
@@ -660,6 +665,76 @@ func (e *Engine) deleteBucketRangeLocked(ctx context.Context, orgID, bucketID pl
 	name := models.EscapeMeasurement(encoded[:])
 
 	return e.engine.DeletePrefixRange(ctx, name, min, max, pred)
+}
+
+func (e *Engine) CreateBackup(ctx context.Context) (int, []string, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx)
+	span.LogKV("path", e.path)
+
+	err := e.engine.WriteSnapshot(ctx, tsm1.CacheStatusBackup)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	id, snapshotPath, err := e.engine.FileStore.CreateSnapshot(ctx)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	fileInfos, err := ioutil.ReadDir(snapshotPath)
+	if err != nil {
+		return 0, nil, err
+	}
+	filenames := make([]string, len(fileInfos))
+	for i, fi := range fileInfos {
+		filenames[i] = fi.Name()
+	}
+
+	return id, filenames, nil
+}
+
+func (e *Engine) FetchBackupFile(ctx context.Context, backupID int, backupFile string, w io.Writer) error {
+	span, ctx := tracing.StartSpanFromContext(ctx)
+	span.LogKV("path", e.path)
+
+	backupPath := e.engine.FileStore.InternalBackupPath(backupID)
+	if fi, err := os.Stat(backupPath); err != nil {
+		if os.IsNotExist(err) {
+			return errors.Errorf("backup %d not found", backupID)
+		}
+		return errors.WithMessagef(err, "failed to locate backup %d", backupID)
+	} else {
+		if !fi.IsDir() {
+			return errors.Errorf("error in filesystem path of backup %d", backupID)
+		}
+	}
+
+	backupFileFullPath := filepath.Join(backupPath, backupFile)
+	file, err := os.Open(backupFileFullPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return errors.Errorf("backup file %d/%s not found", backupID, backupFile)
+		}
+		return errors.WithMessagef(err, "failed to open backup file %d/%s", backupID, backupFile)
+	}
+	defer file.Close()
+
+	buf := make([]byte, 1024*1024)
+	_, err = io.CopyBuffer(w, file, buf)
+	if err != nil {
+		return errors.WithMessagef(err, "failed to copy backup file %d/%s to writer", backupID, backupFile)
+	}
+
+	err = syscall.Unlink(backupFileFullPath)
+	if err != nil {
+		e.logger.Info("failed to unlink backup file after fetch", zap.Error(err), zap.Int("backup_id", backupID), zap.String("backup_file", backupFile))
+	}
+
+	return nil
+}
+
+func (e *Engine) InternalBackupPath(backupID int) string {
+	return e.engine.FileStore.InternalBackupPath(backupID)
 }
 
 // SeriesCardinality returns the number of series in the engine.

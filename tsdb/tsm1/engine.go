@@ -15,6 +15,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/influxdata/influxql"
+	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/zap"
+
 	"github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/kit/tracing"
 	"github.com/influxdata/influxdb/logger"
@@ -25,9 +29,6 @@ import (
 	"github.com/influxdata/influxdb/query"
 	"github.com/influxdata/influxdb/tsdb"
 	"github.com/influxdata/influxdb/tsdb/tsi1"
-	"github.com/influxdata/influxql"
-	"github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/zap"
 )
 
 //go:generate env GO111MODULE=on go run github.com/benbjohnson/tmpl -data=@array_cursor.gen.go.tmpldata array_cursor.gen.go.tmpl array_cursor_iterator.gen.go.tmpl
@@ -799,8 +800,9 @@ func (e *Engine) WriteSnapshot(ctx context.Context, status CacheStatus) error {
 	if err != nil && err != errCompactionsDisabled {
 		e.logger.Info("Error writing snapshot", zap.Error(err))
 	}
-	e.compactionTracker.SnapshotAttempted(err == nil || err == errCompactionsDisabled ||
-		err == ErrSnapshotInProgress, status, time.Since(start))
+	e.compactionTracker.SnapshotAttempted(
+		err == nil || err == errCompactionsDisabled || err == ErrSnapshotInProgress,
+		status, time.Since(start))
 
 	if err != nil {
 		return err
@@ -932,6 +934,7 @@ const (
 	CacheStatusColdNoWrites                      // The cache has not been written to for long enough that it should be snapshotted.
 	CacheStatusRetention                         // The cache was snapshotted before running retention.
 	CacheStatusFullCompaction                    // The cache was snapshotted as part of a full compaction.
+	CacheStatusBackup                            // The cache was snapshotted before running backup.
 )
 
 // ShouldCompactCache returns a status indicating if the Cache should be
