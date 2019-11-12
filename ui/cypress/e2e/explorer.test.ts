@@ -48,7 +48,7 @@ describe('DataExplorer', () => {
           })
       })
     })
-    it('should keep the user on the Custom field and in error status after all input has been deleted even if non-numeric input is typed', () => {
+    it('should put input field in error status and stay in error status when input is invalid or empty', () => {
       cy.get('.view-options').within(() => {
         cy.getByTestID('auto-input').within(() => {
           cy.getByTestID('input-field')
@@ -99,7 +99,7 @@ describe('DataExplorer', () => {
           })
       })
     })
-    it('should put input field in error status when "10" gets one character deleted and becomes "1"', () => {
+    it('should put input field in error status and stay in error status when input is invalid or empty', () => {
       cy.get('.view-options').within(() => {
         cy.getByTestID('grid--column').within(() => {
           cy.getByTestID('input-field')
@@ -108,42 +108,30 @@ describe('DataExplorer', () => {
             .type('{backspace}')
             .getByTestID('input-field--error')
             .should('have.length', 1)
-        })
-      })
-    })
-    it('should put input field in error status when "10" gets all characters deleted and becomes empty', () => {
-      cy.get('.view-options').within(() => {
-        cy.getByTestID('grid--column').within(() => {
-          cy.getByTestID('input-field')
-            .first()
-            .click()
-            .type('{backspace}{backspace}')
-            .getByTestID('input-field--error')
-            .should('have.length', 1)
-        })
-      })
-    })
-    it('should keep input field in error status when "10" becomes "4"', () => {
-      cy.get('.view-options').within(() => {
-        cy.getByTestID('grid--column').within(() => {
-          cy.getByTestID('input-field')
-            .first()
-            .click()
-            .type('{backspace}{backspace}4')
-            .getByTestID('input-field--error')
-            .should('have.length', 1)
-        })
-      })
-    })
-    it('should keep input field in error status when non-numeric characters are typed', () => {
-      cy.get('.view-options').within(() => {
-        cy.getByTestID('grid--column').within(() => {
-          cy.getByTestID('input-field')
-            .first()
-            .click()
-            .type('{backspace}{backspace}abcdefg')
-            .getByTestID('input-field--error')
-            .should('have.length', 1)
+            .then(() => {
+              cy.getByTestID('input-field')
+                .first()
+                .click()
+                .type('{backspace}')
+                .getByTestID('input-field--error')
+                .should('have.length', 1)
+            })
+            .then(() => {
+              cy.getByTestID('input-field')
+                .first()
+                .click()
+                .type('4')
+                .getByTestID('input-field--error')
+                .should('have.length', 1)
+            })
+            .then(() => {
+              cy.getByTestID('input-field')
+                .first()
+                .click()
+                .type('{backspace}abcdefg')
+                .getByTestID('input-field--error')
+                .should('have.length', 1)
+            })
         })
       })
     })
@@ -175,7 +163,7 @@ describe('DataExplorer', () => {
           })
       })
     })
-    it('should allow "2" to be deleted to temporarily become a text input field in error status', () => {
+    it('should put input field in error status and stay in error status when input is invalid or empty', () => {
       cy.get('.view-options').within(() => {
         cy.getByTestID('auto-input--input').within(() => {
           cy.getByTestID('input-field')
@@ -185,43 +173,35 @@ describe('DataExplorer', () => {
             .should('equal', 'text')
             .getByTestID('input-field--error')
             .should('have.length', 1)
+            .then(() => {
+              cy.getByTestID('input-field')
+                .click()
+                .type('{backspace}')
+                .invoke('val')
+                .should('equal', '')
+                .getByTestID('input-field--error')
+                .should('have.length', 1)
+            })
+            .then(() => {
+              cy.getByTestID('input-field')
+                .click()
+                .type('abcdefg')
+                .invoke('val')
+                .should('equal', '')
+                .getByTestID('input-field--error')
+                .should('have.length', 1)
+            })
         })
       })
     })
-    it('should allow "2" to be deleted to become a blank input field in error status', () => {
+    it('should not have input field in error status when "2" becomes valid input such as "11"', () => {
       cy.get('.view-options').within(() => {
         cy.getByTestID('auto-input--input').within(() => {
           cy.getByTestID('input-field')
             .click()
-            .type('{backspace}')
+            .type('{backspace}11')
             .invoke('val')
-            .should('equal', '')
-            .getByTestID('input-field--error')
-            .should('have.length', 1)
-        })
-      })
-    })
-    it('should allow "2" to be deleted to temporarily become a text input field but does NOT allow text input and remains in error status', () => {
-      cy.get('.view-options').within(() => {
-        cy.getByTestID('auto-input--input').within(() => {
-          cy.getByTestID('input-field')
-            .click()
-            .type('{backspace}abcdefg')
-            .invoke('val')
-            .should('equal', '')
-            .getByTestID('input-field--error')
-            .should('have.length', 1)
-        })
-      })
-    })
-    it('should allow "2" to be deleted and then allow numeric input to get out of error status', () => {
-      cy.get('.view-options').within(() => {
-        cy.getByTestID('auto-input--input').within(() => {
-          cy.getByTestID('input-field')
-            .click()
-            .type('{backspace}3')
-            .invoke('val')
-            .should('equal', '3')
+            .should('equal', '11')
             .getByTestID('input-field--error')
             .should('have.length', 0)
         })
