@@ -722,7 +722,7 @@ const lines = (numLines = 3) => {
     .map((_, i) => i)
     .reverse()
 
-  const incrementingTimes = decendingValues.map((val, i) => {
+  const incrementingTimes = decendingValues.map(val => {
     return now - offset_ms * val
   })
 
