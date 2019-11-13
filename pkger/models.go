@@ -733,6 +733,7 @@ const (
 	fieldChartYCol          = "yCol"
 	fieldChartYPos          = "yPos"
 	fieldChartBinSize       = "binSize"
+	fieldChartDomain        = "domain"
 )
 
 type chart struct {
@@ -777,12 +778,16 @@ func (c chart) properties() influxdb.ViewProperties {
 	case chartKindHeatMap:
 		ia := c.Axes.influxAxes()
 		return influxdb.HeatmapViewProperties{
-			Type:              influxdb.ViewPropertyTypeHeatMap,
-			Queries:           c.Queries.influxDashQueries(),
-			ViewColors:        c.Colors.strings(),
-			BinSize:           int32(c.BinSize),
-			XColumn:           c.XCol,
-			YColumn:           c.YCol,
+			Type:       influxdb.ViewPropertyTypeHeatMap,
+			Queries:    c.Queries.influxDashQueries(),
+			ViewColors: c.Colors.strings(),
+			BinSize:    int32(c.BinSize),
+			XColumn:    c.XCol,
+			YColumn:    c.YCol,
+
+			XDomain: ia["x"].Domain,
+			YDomain: ia["y"].Domain,
+
 			XAxisLabel:        ia["x"].Label,
 			XPrefix:           ia["x"].Prefix,
 			XSuffix:           ia["x"].Suffix,
@@ -800,11 +805,15 @@ func (c chart) properties() influxdb.ViewProperties {
 	case chartKindScatter:
 		ia := c.Axes.influxAxes()
 		return influxdb.ScatterViewProperties{
-			Type:              influxdb.ViewPropertyTypeScatter,
-			Queries:           c.Queries.influxDashQueries(),
-			ViewColors:        c.Colors.strings(),
-			XColumn:           c.XCol,
-			YColumn:           c.YCol,
+			Type:       influxdb.ViewPropertyTypeScatter,
+			Queries:    c.Queries.influxDashQueries(),
+			ViewColors: c.Colors.strings(),
+			XColumn:    c.XCol,
+			YColumn:    c.YCol,
+
+			XDomain: ia["x"].Domain,
+			YDomain: ia["y"].Domain,
+
 			XAxisLabel:        ia["x"].Label,
 			XPrefix:           ia["x"].Prefix,
 			XSuffix:           ia["x"].Suffix,
@@ -1090,12 +1099,13 @@ const (
 )
 
 type axis struct {
-	Base   string `json:"base,omitempty" yaml:"base,omitempty"`
-	Label  string `json:"label,omitempty" yaml:"label,omitempty"`
-	Name   string `json:"name,omitempty" yaml:"name,omitempty"`
-	Prefix string `json:"prefix,omitempty" yaml:"prefix,omitempty"`
-	Scale  string `json:"scale,omitempty" yaml:"scale,omitempty"`
-	Suffix string `json:"suffix,omitempty" yaml:"suffix,omitempty"`
+	Base   string    `json:"base,omitempty" yaml:"base,omitempty"`
+	Label  string    `json:"label,omitempty" yaml:"label,omitempty"`
+	Name   string    `json:"name,omitempty" yaml:"name,omitempty"`
+	Prefix string    `json:"prefix,omitempty" yaml:"prefix,omitempty"`
+	Scale  string    `json:"scale,omitempty" yaml:"scale,omitempty"`
+	Suffix string    `json:"suffix,omitempty" yaml:"suffix,omitempty"`
+	Domain []float64 `json:"domain,omitempty" yaml:"domain,omitempty"`
 }
 
 type axes []axis
@@ -1110,6 +1120,7 @@ func (a axes) influxAxes() map[string]influxdb.Axis {
 			Suffix: ax.Suffix,
 			Base:   ax.Base,
 			Scale:  ax.Scale,
+			Domain: ax.Domain,
 		}
 	}
 	return m
